@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BUILD LOG — EduTutor / EduSchool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0f1c;
+    --surface:#121a2c;
+    --surface-2:#19233a;
+    --border:#243151;
+    --text:#e6ecf7;
+    --muted:#8593b3;
+    --muted-2:#5d6a8a;
+
+    --tutor:#e0457b;
+    --tutor-dim:#3a1c2c;
+    --school:#33b56e;
+    --school-dim:#163a26;
+
+    --qa:#a673e0;
+    --qa-dim:#2c2040;
+    --devops:#37c2c9;
+    --devops-dim:#163436;
+    --shared:#5b8cff;
+    --shared-dim:#1c2740;
+    --ai:#e8b34c;
+    --ai-dim:#3a2f15;
+
+    --done:#33b56e;
+    --progress:#e8b34c;
+    --backlog:#5d6a8a;
+
+    --radius:10px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+
+  code, .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ===== HEADER ===== */
+  header{
+    border-bottom:1px solid var(--border);
+    padding:18px 16px;
+    position:sticky; top:0; z-index:50;
+    background:rgba(10,15,28,0.92);
+    backdrop-filter:blur(8px);
+  }
+  .header-row{
+    display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  .logo{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700; font-size:1.1rem; letter-spacing:0.04em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .logo .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--ai);
+    box-shadow:0 0 10px var(--ai);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1);}
+    50%{ opacity:0.5; transform:scale(0.8);}
+  }
+  .subtitle{ color:var(--muted); font-size:0.78rem; font-family:'JetBrains Mono', monospace; }
+
+  .tabs{
+    display:flex; gap:4px; margin-top:14px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:4px; width:fit-content;
+  }
+  .tab{
+    padding:8px 16px; border-radius:7px; font-size:0.85rem; font-weight:600;
+    color:var(--muted); cursor:pointer; transition:all .15s; border:none; background:none;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .tab.active{ background:var(--shared); color:#fff; }
+
+  main{ max-width:1100px; margin:0 auto; padding:18px 16px; }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ===== STATS STRIP ===== */
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr));
+    gap:10px; margin-bottom:18px;
+  }
+  .stat{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:12px 14px;
+  }
+  .stat .num{ font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; }
+  .stat .lbl{ color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+
+  /* ===== CALENDAR ===== */
+  .cal-header{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+  }
+  .cal-header h2{ font-family:'JetBrains Mono', monospace; font-size:1.1rem; }
+  .cal-nav{ display:flex; gap:6px; }
+  .cal-nav button{
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    width:34px; height:34px; border-radius:8px; font-size:1rem; cursor:pointer;
+  }
+  .cal-nav button:active{ background:var(--surface-2); }
+
+  .cal-grid{
+    display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
+  }
+  .cal-dow{
+    text-align:center; font-size:0.65rem; color:var(--muted-2);
+    font-family:'JetBrains Mono', monospace; padding-bottom:4px; text-transform:uppercase;
+  }
+  .cal-day{
+    aspect-ratio:1; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; padding:5px; cursor:pointer; position:relative;
+    display:flex; flex-direction:column; gap:2px; overflow:hidden;
+    transition:border-color .15s;
+  }
+  .cal-day:active{ border-color:var(--shared); }
+  .cal-day.empty{ background:transparent; border:none; cursor:default; }
+  .cal-day.today{ border-color:var(--ai); }
+  .cal-day .dnum{
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--muted);
+    font-weight:600;
+  }
+  .cal-day.today .dnum{ color:var(--ai); }
+  .cal-chips{ display:flex; flex-direction:column; gap:2px; flex:1; overflow:hidden; }
+  .chip{
+    height:5px; border-radius:3px; width:100%;
+  }
+  .chip-count{
+    font-size:0.6rem; color:var(--muted-2); font-family:'JetBrains Mono', monospace;
+    margin-top:auto;
+  }
+  .epic-tutor{ background:var(--tutor); }
+  .epic-school{ background:var(--school); }
+  .epic-qa{ background:var(--qa); }
+  .epic-devops{ background:var(--devops); }
+  .epic-shared{ background:var(--shared); }
+  .epic-ai{ background:var(--ai); }
+
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; margin:14px 0 4px; font-size:0.72rem; color:var(--muted); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  /* ===== BACKLOG ===== */
+  .epic-group{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    margin-bottom:10px; overflow:hidden;
+  }
+  .epic-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; cursor:pointer; gap:10px;
+  }
+  .epic-head-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .epic-bar{ width:4px; height:28px; border-radius:2px; flex-shrink:0; }
+  .epic-title{ font-weight:600; font-size:0.9rem; }
+  .epic-sub{ font-size:0.7rem; color:var(--muted); font-family:'JetBrains Mono', monospace; }
+  .epic-progress{
+    font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:var(--muted);
+    flex-shrink:0;
+  }
+  .epic-tasks{ display:none; border-top:1px solid var(--border); }
+  .epic-group.open .epic-tasks{ display:block; }
+  .epic-group.open .chevron{ transform:rotate(90deg); }
+  .chevron{ transition:transform .15s; color:var(--muted); font-size:0.8rem; flex-shrink:0; }
+
+  .task-row{
+    display:flex; align-items:flex-start; gap:10px; padding:10px 14px;
+    border-bottom:1px solid var(--border); font-size:0.85rem;
+  }
+  .task-row:last-child{ border-bottom:none; }
+  .task-check{
+    width:18px; height:18px; border-radius:5px; border:1.5px solid var(--muted-2);
+    flex-shrink:0; margin-top:2px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:0.7rem; transition:all .15s;
+  }
+  .task-check.done{ background:var(--done); border-color:var(--done); color:#06120c; }
+  .task-check.progress{ border-color:var(--progress); }
+  .task-text{ flex:1; min-width:0; }
+  .task-title{ line-height:1.4; }
+  .task-title.done{ text-decoration:line-through; color:var(--muted); }
+  .task-meta{ display:flex; gap:8px; margin-top:4px; flex-wrap:wrap; }
+  .task-tag{
+    font-size:0.65rem; font-family:'JetBrains Mono', monospace; padding:2px 7px;
+    border-radius:5px; border:1px solid var(--border); color:var(--muted);
+  }
+  .schedule-btn{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--shared);
+    font-size:0.7rem; font-family:'JetBrains Mono', monospace; padding:4px 8px;
+    border-radius:6px; cursor:pointer; flex-shrink:0; white-space:nowrap;
+  }
+
+  /* ===== DAY PANEL (modal) ===== */
+  .overlay{
+    display:none; position:fixed; inset:0; background:rgba(5,8,16,0.7);
+    z-index:100; align-items:flex-end; justify-content:center;
+  }
+  .overlay.active{ display:flex; }
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0;
+    width:100%; max-width:600px; max-height:80vh; overflow-y:auto; padding:18px;
+    animation: slideup .2s ease;
+  }
+  @keyframes slideup{ from{transform:translateY(20px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .panel-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
+  }
+  .panel-head h3{ font-family:'JetBrains Mono', monospace; font-size:1rem; }
+  .panel-close{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:1rem;
+  }
+  .day-task{
+    display:flex; align-items:center; gap:10px; padding:10px; background:var(--surface-2);
+    border-radius:8px; margin-bottom:8px; font-size:0.85rem;
+  }
+  .day-task .epic-bar{ height:24px; }
+  .day-task input[type="number"]{
+    width:54px; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:5px; font-family:'JetBrains Mono', monospace; font-size:0.8rem;
+  }
+  .empty-day{
+    text-align:center; color:var(--muted); padding:30px 10px; font-size:0.85rem;
+  }
+  .add-task-form{
+    margin-top:12px; padding-top:12px; border-top:1px dashed var(--border);
+  }
+  .add-task-form select, .add-task-form input{
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:9px 10px; font-size:0.85rem; margin-bottom:8px; font-family:'Inter',sans-serif;
+  }
+  .add-task-form button{
+    width:100%; background:var(--shared); border:none; color:#fff; padding:10px;
+    border-radius:8px; font-weight:600; cursor:pointer; font-size:0.85rem;
+  }
+
+  /* ===== COMMIT LOG ===== */
+  .commit-log{
+    margin-top:24px; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:14px;
+  }
+  .commit-log h3{
+    font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;
+  }
+  .commit{
+    display:flex; gap:10px; font-family:'JetBrains Mono', monospace; font-size:0.75rem;
+    padding:6px 0; border-bottom:1px solid var(--border); align-items:flex-start;
+  }
+  .commit:last-child{ border-bottom:none; }
+  .commit .hash{ color:var(--ai); flex-shrink:0; }
+  .commit .date{ color:var(--muted-2); flex-shrink:0; }
+  .commit .msg{ color:var(--text); }
+  .no-commits{ color:var(--muted-2); font-size:0.78rem; font-family:'JetBrains Mono', monospace; }
+
+  /* ===== BACKLOG VIEW HEADER ===== */
+  .backlog-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;
+  }
+  .backlog-header h2{ font-family:'JetBrains Mono', monospace; font-size:1.1rem; }
+  .filter-chip{
+    font-size:0.7rem; font-family:'JetBrains Mono', monospace; color:var(--muted);
+    background:var(--surface); border:1px solid var(--border); padding:5px 10px; border-radius:7px;
+  }
+
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div class="logo"><span class="dot"></span> BUILD_LOG</div>
+    <div class="subtitle" id="todayLabel"></div>
+  </div>
+  <div class="subtitle" style="margin-top:4px;">EduTutor &amp; EduSchool — sprint tracker</div>
+  <div class="tabs">
+    <button class="tab active" data-view="calendar">Calendar</button>
+    <button class="tab" data-view="backlog">Backlog</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===== CALENDAR VIEW ===== -->
+  <div class="view active" id="view-calendar">
+    <div class="stats" id="statsStrip"></div>
+
+    <div class="cal-header">
+      <h2 id="monthLabel">June 2026</h2>
+      <div class="cal-nav">
+        <button id="prevMonth">‹</button>
+        <button id="todayBtn">•</button>
+        <button id="nextMonth">›</button>
+      </div>
+    </div>
+
+    <div class="cal-grid" id="calDow"></div>
+    <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
+
+    <div class="legend">
+      <span><i class="epic-shared"></i> Foundation/Auth/Content/Questions</span>
+      <span><i class="epic-ai"></i> AI/Dashboard/Payments</span>
+      <span><i class="epic-tutor"></i> Tutor Workspace</span>
+      <span><i class="epic-school"></i> School Track/Flashcards</span>
+      <span><i class="epic-qa"></i> QA (Playwright + qa-java)</span>
+      <span><i class="epic-devops"></i> DevOps (Postman/Azure/Jenkins)</span>
+    </div>
+
+    <div class="commit-log">
+      <h3>Recent Activity</h3>
+      <div id="commitList"><div class="no-commits">No tasks completed yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ===== BACKLOG VIEW ===== -->
+  <div class="view" id="view-backlog">
+    <div class="backlog-header">
+      <h2>Epics</h2>
+      <span class="filter-chip" id="backlogCount">0/0 done</span>
+    </div>
+    <div id="epicList"></div>
+  </div>
+
+</main>
+
+<!-- Day panel -->
+<div class="overlay" id="dayOverlay">
+  <div class="panel">
+    <div class="panel-head">
+      <h3 id="dayPanelDate">—</h3>
+      <button class="panel-close" id="closeDayPanel">✕</button>
+    </div>
+    <div id="dayTaskList"></div>
+
+    <div class="add-task-form">
+      <select id="addEpicSelect"></select>
+      <select id="addTaskSelect"></select>
+      <button id="addTaskBtn">+ Schedule task on this day</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule picker (from backlog) -->
+<div class="overlay" id="scheduleOverlay">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Schedule task</h3>
+      <button class="panel-close" id="closeSchedulePanel">✕</button>
+    </div>
+    <p style="color:var(--muted); font-size:0.85rem; margin-bottom:10px;" id="scheduleTaskName"></p>
+    <div class="add-task-form" style="border:none; padding-top:0; margin-top:0;">
+      <input type="date" id="scheduleDateInput" />
+      <button id="confirmScheduleBtn">Add to calendar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA MODEL
+   ============================================================ */
+const EPICS = [
+  { id:'e1', name:'Foundation & Tooling', color:'shared', tasks:[
+    'Initialise Nx workspace (web/api/mobile/shared/ui)',
+    'NestJS app skeleton + health check',
+    'Next.js 14 skeleton + Tailwind config',
+    'Flutter app skeleton (Android+iOS)',
+    'Prisma + Supabase Postgres connection',
+    'Doppler secrets management setup',
+    'GitHub Actions: lint+typecheck+test pipeline',
+    'Sentry error monitoring setup',
+    'CONTRIBUTING.md (commit conventions)'
+  ]},
+  { id:'e2', name:'Authentication & Roles', color:'shared', tasks:[
+    'DB schema: users, roles, sessions',
+    'API: register + email verification',
+    'API: login + password reset',
+    'Web: registration flow (role question)',
+    'Web: under-18 parent-link recommendation',
+    'Mobile: register/login screens',
+    'API: role assignment (Manager/Co-Manager/Participant)',
+    'Playwright E2E: registration + login'
+  ]},
+  { id:'e3', name:'Content Engine', color:'shared', tasks:[
+    'DB schema: curriculum/grade/subject/topic/lesson/question',
+    'API: CRUD per content level + permissions',
+    'API: draft vs published states',
+    'Web: content creation UI (topic builder)',
+    'Web: learner content navigation',
+    'API: Bunny.net video upload integration',
+    'Supertest: content CRUD integration tests'
+  ]},
+  { id:'e4', name:'AI Marking Engine', color:'ai', tasks:[
+    'API: DeepSeek integration (configurable provider)',
+    'API: BullMQ marking job queue',
+    'API: admin-editable prompt templates',
+    'API: OCR for handwritten photo answers',
+    'Web: answer submission UI (typed + photo)',
+    'Web: AI feedback display',
+    'API: tutor/teacher mark override + log',
+    'k6 load test: marking queue under load'
+  ]},
+  { id:'e5', name:'Dashboard, Tiers & Goals', color:'ai', tasks:[
+    'DB schema: tiers, usage counters, goals',
+    'API: tier limit enforcement (3/20/40/80)',
+    'API: goal creation + progress tracking',
+    'API: BullMQ reminder scheduling',
+    'Web: learner dashboard (progress/streak/goal)',
+    'Web: upgrade prompt on limit reached',
+    'Mobile: push notifications (FCM+APNs)',
+    'Playwright: tier limit behaviour tests'
+  ]},
+  { id:'e6', name:'Question Flow & Consolidation', color:'shared', tasks:[
+    'API: hidden-by-default progressive steps',
+    'Web: question UI with reveal-step interaction',
+    'API: consolidation gating logic',
+    'Web: consolidation exercise + retry redirect',
+    'E2E: full topic flow (lesson→Q→consolidation→unlock)'
+  ]},
+  { id:'e7', name:'Payments & Subscriptions', color:'ai', tasks:[
+    'PayFast sandbox + API integration',
+    'API: subscription creation + token storage',
+    'API: BullMQ recurring billing + retries',
+    'Web: plan selection + checkout',
+    'API: tutor seat management (Solo→Studio)',
+    'API: tutor billing dashboard endpoints',
+    'Web: tutor billing dashboard UI',
+    'Supertest: payment webhook tests'
+  ]},
+  { id:'e8', name:'Tutor Workspace', color:'tutor', tasks:[
+    'DB schema: spaces, manager/co-manager, participants',
+    'API: invite/approve/remove participant',
+    'API: approval flow configuration',
+    'Web: tutor dashboard (Learners/Prep/AI Reports)',
+    'Web: session scheduling + attendance confirm',
+    'API: session reminder notification triggers',
+    'E2E: full tutor-learner scenario'
+  ]},
+  { id:'e9', name:'School Track', color:'school', tasks:[
+    'DB schema: schools, admins, teachers, classes, enrolments',
+    'API: school admin add/remove teachers',
+    'API: teacher add/remove learners',
+    'Web: class dashboard (completion/scores/mistakes)',
+    'API: Assignment Push',
+    'Web: Live Session View (colour-coded tiles)',
+    'API+Web: Assignment Report generation',
+    'Web: Parent portal (read-only)',
+    'E2E: classroom scenario walkthrough'
+  ]},
+  { id:'e10', name:'Flashcards', color:'school', tasks:[
+    'DB schema: card sets, cards, study sessions, ratings',
+    'API: flashcard CRUD + AI generation',
+    'Web: learner flashcard prompt pop-up',
+    'Web: study mode (flip/rate/repeat curve)',
+    'API: push card sets to learner(s)/class',
+    'Unit tests: repeat curve + mastery threshold'
+  ]},
+  { id:'e11', name:'QA Track A — Playwright & Modern Testing', color:'qa', tasks:[
+    'Vitest: unit tests for NestJS modules',
+    'Vitest: component tests for React UI (libs/ui)',
+    'Playwright: E2E suite setup (web)',
+    'Playwright: auth flow tests',
+    'Playwright: lesson/question/AI feedback flow tests',
+    'MSW: mock API responses for frontend tests',
+    'k6: load test AI marking queue under concurrency'
+  ]},
+  { id:'e12', name:'Postman & API Smoke (CI)', color:'devops', tasks:[
+    'Build Postman collection covering all API endpoints',
+    'Create environment files (local/staging/prod)',
+    'Newman: run collection in GitHub Actions',
+    'Wire Postman smoke as required PR check'
+  ]},
+  { id:'e13', name:'Azure Boards Backlog', color:'devops', tasks:[
+    'Create Azure DevOps organisation + project',
+    'Connect Azure Boards to GitHub repo',
+    'Migrate Epics 1–10 into Azure Boards as work items',
+    'Set up sprints/iterations',
+    'Configure kanban board columns'
+  ]},
+  { id:'e14', name:'qa-java — Selenium/POM/TestNG/REST Assured', color:'qa', tasks:[
+    'Set up Maven project (qa-java/)',
+    'Page Object: LoginPage + DashboardPage',
+    'Page Object: TopicPage + QuestionPage + FlashcardPage',
+    'TestNG suite XML + smoke test group',
+    'Selenium WebDriver: registration + login tests',
+    'Selenium: lesson navigation + question submission tests',
+    'REST Assured: auth + content CRUD API tests',
+    'REST Assured: AI marking response shape tests',
+    'BrowserStack account setup + capabilities config',
+    'Point Selenium suite at BrowserStack remote driver'
+  ]},
+  { id:'e15', name:'Jenkins Nightly Regression', color:'devops', tasks:[
+    'Self-hosted Jenkins via Docker',
+    'Jenkinsfile: checkout + run qa-java suite',
+    'Schedule nightly trigger against staging',
+    'Publish TestNG/Allure HTML report',
+    'Notify on failure (email/Slack)'
+  ]},
+  { id:'e16', name:'Azure Pipelines Release', color:'devops', tasks:[
+    'azure-pipelines.yml: build affected Nx projects',
+    'Pipeline stage: run qa-java suite',
+    'Deploy stage: staging environment',
+    'Deploy stage: production environment',
+    'Doppler: shared secrets across GH Actions/Azure/Jenkins'
+  ]},
+];
+
+const STATUS = { BACKLOG:0, PROGRESS:1, DONE:2 };
+const COLOR_MAP = { shared:'epic-shared', tutor:'epic-tutor', school:'epic-school', ai:'epic-ai', qa:'epic-qa', devops:'epic-devops' };
+
+/* ============================================================
+   STATE (localStorage)
+   ============================================================ */
+const STORAGE_KEY = 'edu_buildlog_v2';
+
+function loadState(){
+  let raw;
+  try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){ raw = null; }
+  if(raw){
+    try{ return JSON.parse(raw); }catch(e){}
+  }
+  // Init default state
+  const taskStatus = {};
+  const schedule = {}; // dateKey -> [ {epicId, taskIdx} ]
+  const log = []; // {date, epicId, taskIdx, ts}
+  EPICS.forEach(ep=>{
+    ep.tasks.forEach((t,i)=>{
+      taskStatus[ep.id+'_'+i] = STATUS.BACKLOG;
+    });
+  });
+  return { taskStatus, schedule, log };
+}
+
+let state = loadState();
+
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function dateKey(y,m,d){
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+function todayKey(){
+  const t = new Date();
+  return dateKey(t.getFullYear(), t.getMonth(), t.getDate());
+}
+function getTask(epicId, idx){
+  const ep = EPICS.find(e=>e.id===epicId);
+  return ep ? ep.tasks[idx] : '';
+}
+function getStatus(epicId, idx){
+  return state.taskStatus[epicId+'_'+idx] ?? STATUS.BACKLOG;
+}
+function setStatus(epicId, idx, val){
+  state.taskStatus[epicId+'_'+idx] = val;
+  saveState();
+}
+
+/* ============================================================
+   CALENDAR RENDER
+   ============================================================ */
+let viewYear, viewMonth;
+const today = new Date();
+viewYear = today.getFullYear();
+viewMonth = today.getMonth();
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+function renderDow(){
+  const el = document.getElementById('calDow');
+  el.innerHTML = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+}
+
+function renderCalendar(){
+  document.getElementById('monthLabel').textContent = MONTH_NAMES[viewMonth] + ' ' + viewYear;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+  for(let i=0;i<firstDay;i++){
+    grid.innerHTML += `<div class="cal-day empty"></div>`;
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const key = dateKey(viewYear, viewMonth, d);
+    const isToday = key === todayKey();
+    const items = state.schedule[key] || [];
+
+    let chips = '';
+    items.slice(0,4).forEach(it=>{
+      const ep = EPICS.find(e=>e.id===it.epicId);
+      chips += `<div class="chip ${COLOR_MAP[ep.color]}"></div>`;
+    });
+
+    grid.innerHTML += `
+      <div class="cal-day ${isToday?'today':''}" data-key="${key}">
+        <div class="dnum">${d}</div>
+        <div class="cal-chips">${chips}</div>
+        ${items.length ? `<div class="chip-count">${items.length} task${items.length>1?'s':''}</div>` : ''}
+      </div>`;
+  }
+
+  // attach click handlers
+  grid.querySelectorAll('.cal-day:not(.empty)').forEach(cell=>{
+    cell.addEventListener('click', ()=> openDayPanel(cell.dataset.key));
+  });
+}
+
+/* ============================================================
+   STATS
+   ============================================================ */
+function renderStats(){
+  let total=0, done=0, progress=0, scheduledFuture=0;
+  EPICS.forEach(ep=>{
+    ep.tasks.forEach((t,i)=>{
+      total++;
+      const s = getStatus(ep.id,i);
+      if(s===STATUS.DONE) done++;
+      if(s===STATUS.PROGRESS) progress++;
+    });
+  });
+  const tk = todayKey();
+  Object.keys(state.schedule).forEach(k=>{
+    if(k >= tk) scheduledFuture += state.schedule[k].length;
+  });
+
+  const pct = total ? Math.round((done/total)*100) : 0;
+
+  document.getElementById('statsStrip').innerHTML = `
+    <div class="stat"><div class="num" style="color:var(--done)">${done}</div><div class="lbl">Done</div></div>
+    <div class="stat"><div class="num" style="color:var(--progress)">${progress}</div><div class="lbl">In Progress</div></div>
+    <div class="stat"><div class="num" style="color:var(--shared)">${total-done-progress}</div><div class="lbl">Backlog</div></div>
+    <div class="stat"><div class="num">${pct}%</div><div class="lbl">Complete</div></div>
+  `;
+}
+
+/* ============================================================
+   COMMIT LOG
+   ============================================================ */
+function renderCommitLog(){
+  const el = document.getElementById('commitList');
+  if(!state.log.length){
+    el.innerHTML = `<div class="no-commits">No tasks completed yet.</div>`;
+    return;
+  }
+  const sorted = [...state.log].sort((a,b)=> b.ts - a.ts).slice(0,15);
+  el.innerHTML = sorted.map(c=>{
+    const ep = EPICS.find(e=>e.id===c.epicId);
+    const hash = c.ts.toString(16).slice(-6);
+    const d = new Date(c.ts);
+    const dateStr = d.toLocaleDateString('en-ZA',{month:'short',day:'numeric'});
+    return `<div class="commit">
+      <span class="hash">#${hash}</span>
+      <span class="date">${dateStr}</span>
+      <span class="msg">[${ep.name}] ${getTask(c.epicId, c.taskIdx)}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   BACKLOG VIEW
+   ============================================================ */
+let openEpics = new Set();
+
+function renderBacklog(){
+  const el = document.getElementById('epicList');
+  let totalAll=0, doneAll=0;
+  el.innerHTML = EPICS.map(ep=>{
+    let done=0;
+    const rows = ep.tasks.map((t,i)=>{
+      const s = getStatus(ep.id,i);
+      if(s===STATUS.DONE) done++;
+      totalAll++; if(s===STATUS.DONE) doneAll++;
+      const checkClass = s===STATUS.DONE?'done':(s===STATUS.PROGRESS?'progress':'');
+      const checkContent = s===STATUS.DONE?'✓':'';
+      return `
+        <div class="task-row">
+          <div class="task-check ${checkClass}" data-epic="${ep.id}" data-idx="${i}">${checkContent}</div>
+          <div class="task-text">
+            <div class="task-title ${s===STATUS.DONE?'done':''}">${t}</div>
+            <div class="task-meta">
+              <span class="task-tag">${s===STATUS.DONE?'DONE':s===STATUS.PROGRESS?'IN PROGRESS':'BACKLOG'}</span>
+            </div>
+          </div>
+          <button class="schedule-btn" data-epic="${ep.id}" data-idx="${i}">Schedule</button>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="epic-group ${openEpics.has(ep.id)?'open':''}" data-epic="${ep.id}">
+        <div class="epic-head">
+          <div class="epic-head-left">
+            <div class="epic-bar ${COLOR_MAP[ep.color]}"></div>
+            <div>
+              <div class="epic-title">${ep.name}</div>
+              <div class="epic-sub">${ep.tasks.length} tasks</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="epic-progress">${done}/${ep.tasks.length}</div>
+            <div class="chevron">▶</div>
+          </div>
+        </div>
+        <div class="epic-tasks">${rows}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('backlogCount').textContent = `${doneAll}/${totalAll} done`;
+
+  // listeners
+  el.querySelectorAll('.epic-head').forEach(h=>{
+    h.addEventListener('click', ()=>{
+      const group = h.closest('.epic-group');
+      const id = group.dataset.epic;
+      if(openEpics.has(id)) openEpics.delete(id); else openEpics.add(id);
+      group.classList.toggle('open');
+    });
+  });
+
+  el.querySelectorAll('.task-check').forEach(chk=>{
+    chk.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const epicId = chk.dataset.epic, idx = +chk.dataset.idx;
+      const cur = getStatus(epicId, idx);
+      let next;
+      if(cur===STATUS.BACKLOG) next=STATUS.PROGRESS;
+      else if(cur===STATUS.PROGRESS) next=STATUS.DONE;
+      else next=STATUS.BACKLOG;
+
+      setStatus(epicId, idx, next);
+
+      if(next===STATUS.DONE){
+        state.log.push({epicId, taskIdx:idx, ts:Date.now()});
+        saveState();
+      }
+      renderAll();
+    });
+  });
+
+  el.querySelectorAll('.schedule-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openSchedulePanel(btn.dataset.epic, +btn.dataset.idx);
+    });
+  });
+}
+
+/* ============================================================
+   DAY PANEL
+   ============================================================ */
+let currentDayKey = null;
+
+function openDayPanel(key){
+  currentDayKey = key;
+  const d = new Date(key+'T00:00:00');
+  document.getElementById('dayPanelDate').textContent =
+    d.toLocaleDateString('en-ZA',{weekday:'long', month:'long', day:'numeric'});
+
+  renderDayTasks();
+  populateAddTaskForm();
+  document.getElementById('dayOverlay').classList.add('active');
+}
+
+function renderDayTasks(){
+  const items = state.schedule[currentDayKey] || [];
+  const el = document.getElementById('dayTaskList');
+  if(!items.length){
+    el.innerHTML = `<div class="empty-day">No tasks scheduled. Add one below.</div>`;
+    return;
+  }
+  el.innerHTML = items.map((it, idx)=>{
+    const ep = EPICS.find(e=>e.id===it.epicId);
+    const s = getStatus(it.epicId, it.taskIdx);
+    const checkClass = s===STATUS.DONE?'done':(s===STATUS.PROGRESS?'progress':'');
+    const checkContent = s===STATUS.DONE?'✓':'';
+    return `
+      <div class="day-task">
+        <div class="epic-bar ${COLOR_MAP[ep.color]}"></div>
+        <div class="task-check ${checkClass}" data-epic="${it.epicId}" data-idx="${it.taskIdx}" style="margin-top:0;">${checkContent}</div>
+        <div style="flex:1; min-width:0; font-size:0.85rem;">
+          <div class="${s===STATUS.DONE?'task-title done':''}">${getTask(it.epicId, it.taskIdx)}</div>
+          <div class="epic-sub">${ep.name}</div>
+        </div>
+        <button class="schedule-btn" data-remove="${idx}" style="color:var(--tutor);">Remove</button>
+      </div>`;
+  }).join('');
+
+  el.querySelectorAll('.task-check').forEach(chk=>{
+    chk.addEventListener('click', ()=>{
+      const epicId = chk.dataset.epic, idx = +chk.dataset.idx;
+      const cur = getStatus(epicId, idx);
+      let next;
+      if(cur===STATUS.BACKLOG) next=STATUS.PROGRESS;
+      else if(cur===STATUS.PROGRESS) next=STATUS.DONE;
+      else next=STATUS.BACKLOG;
+      setStatus(epicId, idx, next);
+      if(next===STATUS.DONE){
+        state.log.push({epicId, taskIdx:idx, ts:Date.now()});
+        saveState();
+      }
+      renderDayTasks();
+      renderAll();
+    });
+  });
+
+  el.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = +btn.dataset.remove;
+      state.schedule[currentDayKey].splice(idx,1);
+      if(!state.schedule[currentDayKey].length) delete state.schedule[currentDayKey];
+      saveState();
+      renderDayTasks();
+      renderAll();
+    });
+  });
+}
+
+function populateAddTaskForm(){
+  const epicSel = document.getElementById('addEpicSelect');
+  epicSel.innerHTML = EPICS.map(ep=>`<option value="${ep.id}">${ep.name}</option>`).join('');
+  updateTaskOptions();
+  epicSel.onchange = updateTaskOptions;
+}
+
+function updateTaskOptions(){
+  const epicId = document.getElementById('addEpicSelect').value;
+  const ep = EPICS.find(e=>e.id===epicId);
+  const taskSel = document.getElementById('addTaskSelect');
+  taskSel.innerHTML = ep.tasks.map((t,i)=>`<option value="${i}">${t}</option>`).join('');
+}
+
+document.getElementById('addTaskBtn').addEventListener('click', ()=>{
+  const epicId = document.getElementById('addEpicSelect').value;
+  const idx = +document.getElementById('addTaskSelect').value;
+  if(!state.schedule[currentDayKey]) state.schedule[currentDayKey]=[];
+  // avoid dup
+  const exists = state.schedule[currentDayKey].some(it=>it.epicId===epicId && it.taskIdx===idx);
+  if(!exists){
+    state.schedule[currentDayKey].push({epicId, taskIdx:idx});
+    saveState();
+  }
+  renderDayTasks();
+  renderAll();
+});
+
+document.getElementById('closeDayPanel').addEventListener('click', ()=>{
+  document.getElementById('dayOverlay').classList.remove('active');
+});
+
+/* ============================================================
+   SCHEDULE PANEL (from backlog)
+   ============================================================ */
+let scheduleTarget = null;
+
+function openSchedulePanel(epicId, idx){
+  scheduleTarget = {epicId, idx};
+  document.getElementById('scheduleTaskName').textContent = getTask(epicId, idx);
+  document.getElementById('scheduleDateInput').value = todayKey();
+  document.getElementById('scheduleOverlay').classList.add('active');
+}
+
+document.getElementById('closeSchedulePanel').addEventListener('click', ()=>{
+  document.getElementById('scheduleOverlay').classList.remove('active');
+});
+
+document.getElementById('confirmScheduleBtn').addEventListener('click', ()=>{
+  const key = document.getElementById('scheduleDateInput').value;
+  if(!key || !scheduleTarget) return;
+  if(!state.schedule[key]) state.schedule[key]=[];
+  const exists = state.schedule[key].some(it=>it.epicId===scheduleTarget.epicId && it.taskIdx===scheduleTarget.idx);
+  if(!exists){
+    state.schedule[key].push({epicId:scheduleTarget.epicId, taskIdx:scheduleTarget.idx});
+    saveState();
+  }
+  document.getElementById('scheduleOverlay').classList.remove('active');
+  renderAll();
+});
+
+/* ============================================================
+   NAV / TABS
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.view).classList.add('active');
+  });
+});
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;}
+  renderCalendar();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;}
+  renderCalendar();
+});
+document.getElementById('todayBtn').addEventListener('click', ()=>{
+  viewYear = today.getFullYear(); viewMonth = today.getMonth();
+  renderCalendar();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function renderAll(){
+  renderStats();
+  renderCalendar();
+  renderCommitLog();
+  renderBacklog();
+}
+
+document.getElementById('todayLabel').textContent =
+  today.toLocaleDateString('en-ZA',{weekday:'short', year:'numeric', month:'short', day:'numeric'});
+
+renderDow();
+renderAll();
+</script>
+
+</body>
+</html>
