@@ -48,4 +48,9 @@ Thumbs.db
 .nx/polygraph
 .nx/self-healing
 .nx/migrate-runs*.pdf 
-node_modules 
+node_modules
+
+# Next.js
+.next
+out
+test-output
